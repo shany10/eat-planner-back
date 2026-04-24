@@ -13,6 +13,10 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+    networks:
+      app-network:
+        aliases:
+          - backend
     volumes:
       - .:/app
       - node_modules:/app/node_modules
@@ -30,15 +34,22 @@ services:
       test:
         [
           "CMD-SHELL",
-          "mongosh --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --quiet --eval \"db.adminCommand('ping').ok\" | grep 1",
+          'mongosh --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --quiet --eval "db.adminCommand(''ping'').ok" | grep 1',
         ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
+    networks:
+      - app-network
     volumes:
       - mongo-data:/data/db
 
 volumes:
   node_modules:
   mongo-data:
+
+networks:
+  app-network:
+    external: true
+    name: app-network

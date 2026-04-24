@@ -1,20 +1,40 @@
 import { Router } from "express";
-import { validateMiddleware, authMiddleware, roleMiddleware } from "../middlewares";
-import { createUserBody, CreateUserInput, updateUserBody, UpdateUserInput, authUserBody } from "../schemas";
+import {
+  validateMiddleware,
+  authMiddleware,
+  roleMiddleware,
+} from "../middlewares";
+import {
+  createUserBody,
+  CreateUserInput,
+  updateUserBody,
+  UpdateUserInput,
+  authUserBody,
+} from "../schemas";
 import { IUser, UserModel } from "../models";
 import { signAccessToken } from "../utils/jwt";
 
 const userRouter = Router();
 
-userRouter.get('/getAll', authMiddleware, roleMiddleware(["admin"]), async (req, res): Promise<void> => {
+userRouter.get(
+  "/getAll",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  async (req, res): Promise<void> => {
     const list = await UserModel.find().exec();
     res.status(200).json(list);
-})
+  },
+);
 
-userRouter.get('/get/:id', authMiddleware, roleMiddleware(["admin"]), async (req, res): Promise<void> => {
+userRouter.get(
+  "/get/:id",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  async (req, res): Promise<void> => {
     const list = await UserModel.findById(req.params.id).exec();
     res.status(200).json(list);
-})
+  },
+);
 
 userRouter.post(
   "/create",
@@ -25,11 +45,11 @@ userRouter.post(
     const message =
       created && typeof created === "object" ? "user created" : "error";
     res.status(201).send(message);
-  }
+  },
 );
 
 userRouter.post(
-  "/auth",
+  "/login",
   validateMiddleware({ body: authUserBody }),
   async (req, res): Promise<void> => {
     const { email, password } = req.body;
@@ -56,7 +76,7 @@ userRouter.post(
     }
     const token = signAccessToken({ sub: user.id });
     res.json({ ok: true, token, id: user.id });
-  }
+  },
 );
 
 userRouter.patch(
@@ -89,7 +109,7 @@ userRouter.patch(
         .status(500)
         .json({ error: "Erreur lors de la modification du statut" });
     }
-  }
+  },
 );
 
 userRouter.get(
@@ -100,7 +120,7 @@ userRouter.get(
     try {
       const user = await UserModel.findById(
         req.params.id,
-        "firstname lastname email role active"
+        "firstname lastname email role active",
       ).exec();
       if (!user) {
         res.status(404).json({ error: "Utilisateur non trouvé" });
@@ -112,10 +132,14 @@ userRouter.get(
         .status(500)
         .json({ error: "Erreur lors de la récupération du statut" });
     }
-  }
+  },
 );
 
-userRouter.patch('/update/:id', authMiddleware, validateMiddleware({ body: updateUserBody }), async (req, res): Promise<void> => {
+userRouter.patch(
+  "/update/:id",
+  authMiddleware,
+  validateMiddleware({ body: updateUserBody }),
+  async (req, res): Promise<void> => {
     const id = req.params.id;
     const updates = req.body as UpdateUserInput;
     if (updates.password) {
@@ -133,21 +157,29 @@ userRouter.patch('/update/:id', authMiddleware, validateMiddleware({ body: updat
     }).exec();
     if (!updated) res.status(404).json({ error: "User not found" });
     else res.json(updated);
-  }
+  },
 );
 
-userRouter.delete('/delete/:id', authMiddleware, roleMiddleware(["admin"]), async (req, res): Promise<void> => {
+userRouter.delete(
+  "/delete/:id",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  async (req, res): Promise<void> => {
     const { id } = req.params;
     const deleted = await UserModel.findByIdAndDelete(id).exec();
     if (!deleted) res.status(404).send("user not found");
     else res.status(204).send();
-  }
+  },
 );
 
-userRouter.delete('/deleteAll', authMiddleware, roleMiddleware(["admin"]), async (req, res): Promise<void> => {
+userRouter.delete(
+  "/deleteAll",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  async (req, res): Promise<void> => {
     await UserModel.deleteMany({});
     res.status(204).send();
-  }
+  },
 );
 
 export { userRouter };

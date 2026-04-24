@@ -12,11 +12,11 @@ connectMongoose().catch(err => {
   process.exit(1);
 });
 
-app.get('/', (req, res) => {    
+app.get('/api', (req, res) => {    
     res.send('eat planner');
 });
 
-app.use('/user', userRouter);
+app.use('/api/user', userRouter);
 
 app.listen(3000, () => {
     console.log(`Server is running at http://localhost:3000`);
