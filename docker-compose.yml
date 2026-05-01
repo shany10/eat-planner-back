@@ -10,8 +10,15 @@ services:
       NODE_ENV: "development"
       MONGODB_URI: "${MONGODB_URI}"
       PORT: "3000"
+      # IMPORTANT: depuis un container, `localhost` pointe vers le container lui-même.
+      # On doit viser le nom de service Docker: `postgres`.
+      # Valeur par défaut alignée sur la config du service postgres ci-dessous.
+      # NB: on force ici pour éviter qu'un .env local avec localhost casse la connexion depuis Docker.
+      DATABASE_URL: "postgresql://postgres:example@postgres:5432/mydb?schema=public"
     depends_on:
       mongo:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     networks:
       app-network:
@@ -20,7 +27,14 @@ services:
     volumes:
       - .:/app
       - node_modules:/app/node_modules
-    command: npm run dev
+    # On démarre root juste pour fixer les droits sur le volume, puis on lance l'app en user `node`.
+    user: "root"
+    command: >
+      sh -c "
+        chmod +x ./docker/entrypoint.sh &&
+        chown -R node:node /app/node_modules &&
+        su node -c ./docker/entrypoint.sh
+      "
 
   mongo:
     image: mongo:6.0
@@ -44,11 +58,38 @@ services:
       - app-network
     volumes:
       - mongo-data:/data/db
+  
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - app-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
 
 volumes:
   node_modules:
   mongo-data:
-
+  postgres-data:
 networks:
   app-network:
     external: true

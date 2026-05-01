@@ -1,0 +1,31 @@
+{
+    // Use the project's TypeScript version
+    "typescript.tsdk": "node_modules/typescript/lib",
+    // Format on save (optional but handy)
+    "editor.formatOnSave": true,
+    // Default formatter for TS/JS
+    "[typescript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    // JSON files
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    // Docker Compose files (docker-compose.yml)
+    // Use Docker extension formatter when multiple formatters are installed.
+    "[dockercompose]": {
+        "editor.defaultFormatter": "ms-azuretools.vscode-containers"
+    }
+}

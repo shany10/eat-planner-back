@@ -1,4 +1,4 @@
-import { UserModel } from "../src/models";
+import { createUser } from "../src/models";
 
 export const userSeeder = async () => {
   const users = [
@@ -6,40 +6,18 @@ export const userSeeder = async () => {
       firstname: "Admin",
       lastname: "System",
       email: "admin@gym.com",
+      number: "0000000000",
       password: "Admin123!",
-      role: "admin",
+      role: "admin" as const,
       active: true
     },
     {
       firstname: "Jean",
       lastname: "Manager",
       email: "jean.manager@gym.com",
+      number: "0000000001",
       password: "Manager123!",
-      role: "manager",
-      active: true
-    },
-    {
-      firstname: "Marie",
-      lastname: "Dupont",
-      email: "marie.dupont@gym.com",
-      password: "Member123!",
-      role: "member",
-      active: true
-    },
-    {
-      firstname: "Pierre",
-      lastname: "Martin",
-      email: "pierre.martin@gym.com",
-      password: "Member123!",
-      role: "member",
-      active: true
-    },
-    {
-      firstname: "Sophie",
-      lastname: "Bernard",
-      email: "sophie.bernard@gym.com",
-      password: "Member123!",
-      role: "member",
+      role: "manager" as const,
       active: true
     }
   ];
@@ -49,7 +27,7 @@ export const userSeeder = async () => {
  
   const createdUsers = [];
   for (const userData of users) {
-    const user = await UserModel.create(userData);
+    const user = await createUser(userData);
     createdUsers.push(user);
   }
   

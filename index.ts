@@ -16,7 +16,7 @@ app.get('/api', (req, res) => {
     res.send('eat planner');
 });
 
-app.use('/api/user', userRouter);
+app.use('/api/auth', userRouter);
 
 app.listen(3000, () => {
     console.log(`Server is running at http://localhost:3000`);

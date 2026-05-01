@@ -1,38 +1,69 @@
-import { Schema, model, Document } from "mongoose";
 import argon2 from "argon2";
+import { prisma } from "../db/prisma";
+import { UserPublic, UserRole, CreateUserInput } from "../type"
 
-export interface IUser extends Document {
-  firstname: string;
-  lastname: string;
-  email: string;
-  password: string;
-  role: "admin" | "manager" | "member";
-  active: boolean;
-  created_at: Date;
-  updated_at: Date;
-  verifyPassword(candidate: string): Promise<boolean>;
+function toPublicUser(u: any): UserPublic {
+  return {
+    id: u.id,
+    firstname: u.firstname,
+    lastname: u.lastname,
+    email: u.email,
+    number: u.number,
+    role: u.role,
+    active: u.active,
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
+  };
 }
 
-const userSchema = new Schema<IUser>({
-  firstname: { type: String, required: true },
-  lastname: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, enum: ["admin", "manager", "member"], required: true },
-  active: { type: Boolean, default: true }
-}, {
-  timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
-  strict: true
-});
+export async function listUsers(): Promise<UserPublic[]> {
+  const users = await prisma.user.findMany({ orderBy: { id: "asc" } });
+  return users.map(toPublicUser);
+}
 
-userSchema.pre("save", async function (this: IUser) {
-  if (!this.isModified("password")) return;
-  this.password = await argon2.hash(this.password);
-});
+export async function getUserById(id: number): Promise<UserPublic | null> {
+  const user = await prisma.user.findUnique({ where: { id } });
+  return user ? toPublicUser(user) : null;
+}
 
+export async function createUser(data: CreateUserInput
+): Promise<UserPublic> {
+  const hashedPassword = await argon2.hash(data.password);
+  const user = await prisma.user.create({
+    data: {
+      firstname: data.firstname,
+      lastname: data.lastname,
+      email: data.email,
+      number: data.number,
+      password: hashedPassword,
+    }
+  });
 
-userSchema.methods.verifyPassword = async function (candidate: string) {
-  return argon2.verify(this.password, candidate);
-};
+  return toPublicUser(user);
+}
 
-export const UserModel = model<IUser>("User", userSchema);
+export async function verifyUserPasswordByEmail(params: {
+  email: string;
+  password: string;
+}): Promise<{ user: UserPublic; ok: true } | { ok: false }> {
+  const user = await prisma.user.findUnique({ where: { email: params.email } });
+  if (!user) return { ok: false };
+  if (!user.active) return { ok: false };
+
+  const isValid = await argon2.verify(user.password, params.password);
+  if (!isValid) return { ok: false };
+
+  return { ok: true, user: toPublicUser(user) };
+}
+
+export async function toggleUserActive(id: number): Promise<UserPublic | null> {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) return null;
+
+  const updated = await prisma.user.update({
+    where: { id },
+    data: { active: !user.active },
+  });
+
+  return toPublicUser(updated);
+}

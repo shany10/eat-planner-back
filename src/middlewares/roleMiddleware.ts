@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { UserModel, IUser } from "../models";
+import { getUserById } from "../models";
 
 export function roleMiddleware(allowedRoles: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -8,7 +8,12 @@ export function roleMiddleware(allowedRoles: string[]) {
     }
 
     try {
-      const user: IUser | null = await UserModel.findById(req.user.id).exec();
+      const id = Number(req.user.id);
+      if (!Number.isFinite(id)) {
+        return res.status(401).json({ error: "Invalid user id" });
+      }
+
+      const user = await getUserById(id);
 
       if (!user) {
         return res.status(404).json({ error: "User not found" });

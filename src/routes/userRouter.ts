@@ -10,8 +10,14 @@ import {
   updateUserBody,
   UpdateUserInput,
   authUserBody,
-} from "../schemas";
-import { IUser, UserModel } from "../models";
+} from "../type";
+import {
+  createUser,
+  getUserById,
+  listUsers,
+  toggleUserActive,
+  verifyUserPasswordByEmail,
+} from "../models";
 import { signAccessToken } from "../utils/jwt";
 
 const userRouter = Router();
@@ -21,7 +27,7 @@ userRouter.get(
   authMiddleware,
   roleMiddleware(["admin"]),
   async (req, res): Promise<void> => {
-    const list = await UserModel.find().exec();
+    const list = await listUsers();
     res.status(200).json(list);
   },
 );
@@ -31,20 +37,23 @@ userRouter.get(
   authMiddleware,
   roleMiddleware(["admin"]),
   async (req, res): Promise<void> => {
-    const list = await UserModel.findById(req.params.id).exec();
-    res.status(200).json(list);
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    const user = await getUserById(id);
+    res.status(200).json(user);
   },
 );
 
 userRouter.post(
-  "/create",
+  "/register",
   validateMiddleware({ body: createUserBody }),
   async (req, res): Promise<void> => {
     const input = req.body as CreateUserInput;
-    const created = await UserModel.create(input);
-    const message =
-      created && typeof created === "object" ? "user created" : "error";
-    res.status(201).send(message);
+    await createUser(input);
+    res.status(201).json({ ok: true, message: "user created" });
   },
 );
 
@@ -54,28 +63,14 @@ userRouter.post(
   async (req, res): Promise<void> => {
     const { email, password } = req.body;
 
-    const user: IUser | null = await UserModel.findOne({ email })
-      .select("+password")
-      .exec();
-    if (!user) {
+    const result = await verifyUserPasswordByEmail({ email, password });
+    if (!result.ok) {
       res.status(401).json({ error: "Invalid email or password" });
       return;
     }
 
-    if (!user.active) {
-      res
-        .status(403)
-        .json({ error: "Account disabled. Contact administrator." });
-      return;
-    }
-
-    const isValid = await user.verifyPassword(password);
-    if (!isValid) {
-      res.status(401).json({ error: "Invalid email or password" });
-      return;
-    }
-    const token = signAccessToken({ sub: user.id });
-    res.json({ ok: true, token, id: user.id });
+    const token = signAccessToken({ sub: String(result.user.id) });
+    res.json({ ok: true, token, id: result.user.id });
   },
 );
 
@@ -85,16 +80,17 @@ userRouter.patch(
   roleMiddleware(["admin"]),
   async (req, res): Promise<void> => {
     try {
-      const { id } = req.params;
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) {
+        res.status(400).json({ error: "Invalid id" });
+        return;
+      }
 
-      const user = await UserModel.findById(id).exec();
+      const user = await toggleUserActive(id);
       if (!user) {
         res.status(404).json({ error: "Utilisateur non trouvé" });
         return;
       }
-
-      user.active = !user.active;
-      await user.save();
 
       res.status(200).json({
         message: user.active ? "Utilisateur activé" : "Utilisateur désactivé",
@@ -118,10 +114,13 @@ userRouter.get(
   roleMiddleware(["admin"]),
   async (req, res): Promise<void> => {
     try {
-      const user = await UserModel.findById(
-        req.params.id,
-        "firstname lastname email role active",
-      ).exec();
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) {
+        res.status(400).json({ error: "Invalid id" });
+        return;
+      }
+
+      const user = await getUserById(id);
       if (!user) {
         res.status(404).json({ error: "Utilisateur non trouvé" });
         return;
@@ -140,23 +139,10 @@ userRouter.patch(
   authMiddleware,
   validateMiddleware({ body: updateUserBody }),
   async (req, res): Promise<void> => {
-    const id = req.params.id;
-    const updates = req.body as UpdateUserInput;
-    if (updates.password) {
-      const user = await UserModel.findById(id).select("+password");
-      if (!user) res.status(404).json({ error: "User not found" });
-      else {
-        user.password = updates.password;
-        Object.assign(user, updates);
-        await user.save();
-        res.json({ ok: true, id: user.id });
-      }
-    }
-    const updated = await UserModel.findByIdAndUpdate(id, updates, {
-      new: true,
-    }).exec();
-    if (!updated) res.status(404).json({ error: "User not found" });
-    else res.json(updated);
+    // TODO: implémenter un update Prisma complet (y compris hash du password)
+    // Pour l'instant on évite de casser le build.
+    const _updates = req.body as UpdateUserInput;
+    res.status(501).json({ error: "Not implemented (Prisma)" });
   },
 );
 
@@ -165,10 +151,7 @@ userRouter.delete(
   authMiddleware,
   roleMiddleware(["admin"]),
   async (req, res): Promise<void> => {
-    const { id } = req.params;
-    const deleted = await UserModel.findByIdAndDelete(id).exec();
-    if (!deleted) res.status(404).send("user not found");
-    else res.status(204).send();
+    res.status(501).json({ error: "Not implemented (Prisma)" });
   },
 );
 
@@ -177,8 +160,7 @@ userRouter.delete(
   authMiddleware,
   roleMiddleware(["admin"]),
   async (req, res): Promise<void> => {
-    await UserModel.deleteMany({});
-    res.status(204).send();
+    res.status(501).json({ error: "Not implemented (Prisma)" });
   },
 );
 
