@@ -70,7 +70,7 @@ userRouter.post(
     }
 
     const token = signAccessToken({ sub: String(result.user.id) });
-    res.json({ ok: true, token, id: result.user.id });
+    res.json({ ok: true, token, user: result.user });
   },
 );
 
